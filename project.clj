@@ -1,4 +1,4 @@
-(defproject form-components "0.1.0-SNAPSHOT"
+(defproject form-components "0.1.0"
   :description "Reagent form and UI components"
   :url "https://github.com/jdkealy/form-components"
   :license {:name "Eclipse Public License"

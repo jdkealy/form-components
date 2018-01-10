@@ -239,11 +239,13 @@
 
 
 
-(defn form [state fields {:keys [callback]}]
-  (let [cb-fn (fn []
+(defn form [state fields {:keys [submit-label callback action-class]  :as params}]
+  (let [cb-fn (fn [e]
                 (validate-components fields state)
                 (when (= 0 (count (filter identity (map :error (vals @state)))))
-                  (callback (inputs-to-key-val @state) )))]
+                  (callback (inputs-to-key-val @state) ))
+                (.preventDefault e)
+                )]
     [:div
      (when-let [error (:error state)]
        [:div.form-error
@@ -252,4 +254,6 @@
       (map (fn [field]
              ^{:key field} [input field state])
            fields)
-      [:span.btn {:on-click cb-fn} "submit"]]]))
+      [:div {:className (or action-class "")}
+
+       [:span.btn {:on-click cb-fn} (or submit-label "submit")]]]]))

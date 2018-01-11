@@ -86,21 +86,21 @@
                                              {})))
                          (when-let [p (:placeholder obj)]
                            [:option {:value "-1" } p])
-                         (map (fn [opt]
-                                (let [selected? (=
-                                                 (:value opt)
-                                                 (get-in @data [key :value]))
-                                      options {:key (str opt)
-                                               :value (:value opt)}
-                                      options (if-let [pic (:pic opt)]
-                                                (assoc options :data-icon pic)
-                                                options)]
-                                  (if (:value opt)
-                                    [:option options
+                         (doall  (map (fn [opt]
+                                        (let [selected? (=
+                                                         (:value opt)
+                                                         (get-in @data [key :value]))
+                                              options {:key (str opt)
+                                                       :value (:value opt)}
+                                              options (if-let [pic (:pic opt)]
+                                                        (assoc options :data-icon pic)
+                                                        options)]
+                                          (if (:value opt)
+                                            [:option options
 
-                                     (:display opt)]
-                                    [:option {:key opt
-                                              :selected selected?
-                                              :value opt}
-                                     opt])))
-                              (:fields obj))])})))
+                                             (:display opt)]
+                                            [:option {:key opt
+                                                      :selected selected?
+                                                      :value opt}
+                                             opt])))
+                                      (:fields obj)))])})))

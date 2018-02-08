@@ -3,6 +3,7 @@
             [reagent.session :as session]
             [goog.events :as events]
             [form-components.text-input :as text]
+            [form-components.date :as date]
             [form-components.checkbox :as checkbox]
             [form-components.selector :as select]
             [taoensso.timbre :as timbre
@@ -103,6 +104,7 @@
   (case type
     :select [select/cmp obj data]
     :checkbox [checkbox/cmp obj data]
+    :date [date/cmp obj data]
     [text/cmp obj data nil nil nil ]))
 
 
@@ -158,14 +160,12 @@
     (when
         (or (not val)
             (> 7 (count val)))
-      (swap! data (fn [d] (assoc-in d [key :error] "Cant be less than 7 characters")))))
-  )
+      (swap! data (fn [d] (assoc-in d [key :error] "Cant be less than 7 characters"))))))
 
 (defn validate-equal-fields [key-1 key-2 data]
   (let [val-1 (get-in @data [key-1 :value]) val-2 (get-in @data [key-2 :value])]
     (when (not= val-1 val-2)
       (swap! data (fn [d] (assoc-in d [key-2 :error] "Must be equal"))) )))
-
 
 (defn not-blank [key data]
   (let [val (get-in @data [key :value]) ]

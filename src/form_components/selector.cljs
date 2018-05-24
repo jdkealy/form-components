@@ -24,10 +24,6 @@
                                        (assoc-in  [key :value ] val)
                                        (update-in [key] dissoc :error ))))))
                  (when on-change (on-change)))]
-
-    (comment
-
-      )
     (reagent/create-class
      {:component-will-unmount (fn [this]
                                 (let [el (reagent/dom-node this) ]

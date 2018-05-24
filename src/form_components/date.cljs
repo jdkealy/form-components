@@ -8,12 +8,15 @@
 
 (defn makeDatePicker [node opts cb dont-close?]
   (set! (.-onSet opts) (fn [val]
+                         (println "THIS IS VAL" val)
                          (cb val)
                          (this-as this
-                                  (if (.-select val)
-                                    (when-not dont-close?
-                                      (.close this))
-                                    (.onSetCallback opts val)))))
+                                  (do
+                                    (println "SELECTED!!!!!!!!!!!!!!!!")
+                                    (if (.-select val)
+                                      (when-not dont-close?
+                                        (.close this))
+                                      (.onSetCallback opts val))))))
   (.pickadate (js/$ node) opts))
 
 (defn- make-datepicker [{:keys [callback dont-close?]} input]

@@ -20,43 +20,29 @@
                                        (assoc-in  [key :changed] true)
                                        (update-in  [key] dissoc :value))
                                    (-> item
+
                                        (assoc-in  [key :changed] true)
                                        (assoc-in  [key :value ] val)
                                        (update-in [key] dissoc :error ))))))
                  (when on-change (on-change)))]
     (reagent/create-class
-     {:component-will-unmount (fn [this]
-                                (let [el (reagent/dom-node this) ]
-                                  (->  el
-                                       js/$
-                                       (.material_select "destroy"))
-                                  (->  el
-                                       js/$
-                                       (.material_select))
-                                  (->  el
-                                       js/$
-                                       (.on "change" change)))
-
-                                )
-      :component-did-mount (fn [this]
+     {:component-did-mount (fn [this]
                              (let [el (reagent/dom-node this) ]
+                               (let [value (get-in @data [key :value])]
+                                 (when value
+                                   (-> el
+                                       js/$
+                                       (.val value))))
                                   (->  el
                                        js/$
-                                       (.material_select "destroy"))
-                                  (->  el
-                                       js/$
-                                       (.material_select))
-                                  (->  el
-                                       js/$
-                                       (.on "change" change))
-                                  (let [value (get-in @data [key :value])]
-                                    (when value
-                                      (-> el
-                                          js/$
-                                          (.val value))))))
+                                       (.formSelect ))
+                                  (.on  (->  el
+                                             js/$
+                                             (.formSelect )
+                                             ) "change" change )))
       :reagent-render (fn []
-                        [:select (merge  {:key (str (:fields obj)  (get-in @data [key :value]))
-                                          :value (get-in @data [key :value])
+
+                        [:select (merge  {:value (get-in @data [key :value])
                                           :placeholder (when placeholder placeholder)
                                           :on-focus (fn [e] (swap! data (fn [ee] (assoc ee :focus-key key))))
                                           :className (str
@@ -70,6 +56,7 @@
                                                       (when (:error base)
                                                         "has-error"))
                                           :on-change (fn [e]
+
 
                                                        )}
                                          (if (:disabled obj)

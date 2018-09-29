@@ -11,24 +11,20 @@
             [ajax.core :refer [POST GET DELETE PUT]]
             [goog.history.EventType :as EventType]))
 
-(defn input-wrap [{:keys [icon label-class key with-checkbox skip-decorator-label] :as obj} data cmp]
+(defn input-wrap [{:keys [icon label-class input-wrapper-class key with-checkbox skip-decorator-label] :as obj} data cmp]
   (let [key (:key obj)
+        input-wrapper-class (or input-wrapper-class "")
         base (get @data key)
         type (:type obj "text")
         err (:error base)]
     [:div
      {:key key
-      :className (when-not (= :select type)  "input-field")
-      :class (:form-group-class obj)}
+      :className (str (:form-group-class obj) " "(when-not (= :select type)  "input-field"))}
+     cmp
      [:label
       {:class (str
                (when label-class
-                 label-class
-                 )
-               (when (or
-                      (:tmp-value base)
-                      (:value base))
-                 "active"))
+                 label-class))
        :data-error err
        :for (:id obj)}
       (when with-checkbox
@@ -54,11 +50,11 @@
       (when-not skip-decorator-label
         (:label obj))]
      (if (:error base)
-       [:div.help-inline (:error base)]
-       (if (:help-block obj)
-         [:div.help-inline (:help-block obj)]
+       [:span.helper-text (:error base)]
+       (if-let [hb  (:help-block obj)]
+         [:span.helper-text hb ]
          [:div]))
-     cmp]))
+     ]))
 
 
 (defn append-nested [params item _field]
@@ -108,7 +104,7 @@
     [text/cmp obj data nil nil nil ]))
 
 
-(defn input [{:keys [val-path className text-in-line skip-decorator custom_inputs key type] :as obj} data ]
+(defn input [{:keys [val-path className custom-cmp  text-in-line skip-decorator custom_inputs key type] :as obj} data ]
   (if (:custom_inputs obj)
     (:inputs obj)
     (let [cmp (if (and
@@ -120,7 +116,9 @@
                                     (swap! data (fn [e]
                                                   (assoc-in e [key :editing] true)))
                                     )} (get-in @data val-path) ]
-                (key-to-cmp obj data ))]
+                (if custom-cmp
+                  [custom-cmp obj data ]
+                  (key-to-cmp obj data )))]
       (if skip-decorator
         cmp
         (input-wrap obj data cmp)))))
@@ -239,16 +237,17 @@
 
 
 
-(defn form [state fields {:keys [submit-label callback action-class]  :as params}]
+(defn form [state fields {:keys [header submit-label callback action-class]  :as params}]
   (let [cb-fn (fn [e]
                 (validate-components fields state)
                 (when (= 0 (count (filter identity (map :error (vals @state)))))
                   (callback (inputs-to-key-val @state) ))
-                (.preventDefault e)
-                )]
+                (.preventDefault e))]
     [:div
-     (when-let [error (:error state)]
-       [:div.form-error
+     (when header
+       [:h4 header])
+     (when-let [error (:error @state)]
+       [:div.form-error.red-text
         error])
      [:form {:on-submit cb-fn}
       (map (fn [field]
@@ -256,4 +255,5 @@
            fields)
       [:div {:className (or action-class "")}
 
-       [:span.btn {:on-click cb-fn} (or submit-label "submit")]]]]))
+       [:span.btn {:className (when (:disabled @state) " disabled ")
+                   :on-click cb-fn} (or submit-label "submit")]]]]))

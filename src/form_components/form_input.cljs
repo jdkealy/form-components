@@ -1,81 +1,60 @@
 (ns form-components.form-input
   (:require [reagent.core :as reagent :refer [atom]]
-            [reagent.session :as session]
             [goog.events :as events]
+
             [form-components.text-input :as text]
             [form-components.date :as date]
             [form-components.checkbox :as checkbox]
             [form-components.selector :as select]
-            [taoensso.timbre :as timbre
-             :refer-macros (debug)]
-            [ajax.core :refer [POST GET DELETE PUT]]
+
+
             [goog.history.EventType :as EventType]))
 
-(defn input-wrap [{:keys [icon label-class input-wrapper-class key with-checkbox skip-decorator-label] :as obj} data cmp]
+(defn input-wrap [{:keys [icon label-above? label-class skip-input-class input-wrapper-class key with-checkbox skip-decorator-label] :as obj} data cmp]
   (let [key (:key obj)
         input-wrapper-class (or input-wrapper-class "")
         base (get @data key)
         type (:type obj "text")
-        err (:error base)]
+        err (:error base)
+        label [:label
+               {:class (str
+                        (when label-class
+                          label-class))
+                :data-error err
+                :for (:id obj)}
+               (when with-checkbox
+                 [:input {:on-change
+                          (fn [e]
+                            (swap! data assoc-in [key :changed]
+                                   (if (.-checked (.-currentTarget e))
+                                     true
+                                     false)))
+                          :checked (if (get-in @data [key :changed])
+                                     true
+                                     false)
+                          :type "checkbox"}])
+               (when with-checkbox
+                 [:span " "])
+               (when icon
+                 [:span
+                  [:i {:class icon}]
+                  " "])
+               (when-not skip-decorator-label
+                 (:label obj))]
+        label-below? (not label-above?)]
     [:div
      {:key key
-      :className (str (:form-group-class obj) " "(when-not (= :select type)  "input-field"))}
+      :className (str (:form-group-class obj) " input-field " )}
+     (when label-above? label)
      cmp
-     [:label
-      {:class (str
-               (when label-class
-                 label-class))
-       :data-error err
-       :for (:id obj)}
-      (when with-checkbox
-        [:input {:on-change
-                 (fn [e]
-                   (swap! data assoc-in [key :changed]
-                          (if (.-checked (.-currentTarget e))
-                            true
-                            false)))
-                 :checked (if (get-in @data [key :changed])
-                            true
-                            false)
-                 :type "checkbox"}])
-      (when with-checkbox
-        [:span " "])
-      (when icon
-        [:span
-         [:i {:class icon}]
-         " "
-         ]
+     (when label-below? label )
 
-        )
-      (when-not skip-decorator-label
-        (:label obj))]
      (if (:error base)
        [:span.helper-text (:error base)]
        (if-let [hb  (:help-block obj)]
          [:span.helper-text hb ]
          [:div]))
      ]))
-
-
-(defn append-nested [params item _field]
-  (let [_key (:key _field)
-
-        fields (doall (->> _field
-                           :fields
-                           (map :field)
-                           vec))
-        contact (->> fields
-                     (reduce (fn [memo field]
-                               (if-let [p (get-in item [_key field :value])]
-                                 (assoc memo field p)
-                                 memo)) {}))
-        _vals (->> contact
-                   vals
-                   (filter #(and % (not= "" %)))
-                   count)]
-    (if (= 0 _vals)
-      params
-      (assoc params _key contact))))
 
 (defn image-cmp [{:keys [key type] :as obj} data]
   [:div.file-field.input-field
@@ -132,27 +111,6 @@
             (not (.test regexp (clj->js val))))
       (swap! data (fn [d] (assoc-in d [key :error] "Not a valid email"))))))
 
-(defn contact-validator [key data]
-  (let [val (get-in @data [key :website :value])
-        regexp #"https://\S+\.\S+"]
-    (when
-        (and  val
-              (not= "" val)
-              (not (.test regexp (clj->js val))))
-      (swap! data (fn [d] (assoc-in d [key :error] "Website: not a valid URL.  Must start with https://"))))))
-
-(defn validate-unique-email [email key data callback]
-  (POST (str "/check-email.edn")
-        {:keywords? true
-         :format :edn
-         :params {:user/email email}
-         :handler (fn [response]
-                    (when (:exist? response)
-                      (swap! data (fn [d]
-                                    (assoc-in d [key :error]
-                                              (str "user " email " already exists")))))
-                    (callback))}))
-
 (defn validate-pw-long [key data callback]
   (let [val (get-in @data [key :value]) ]
     (when
@@ -179,39 +137,34 @@
             (= "" val))
       (swap! data (fn [d] (assoc-in d [key :error] "You must choose one option"))))))
 
-(defn city-validator [key data]
-  (let [val (get-in @data [key :value]) ]
-    (do
-      (when
-          (or (not val)
-              (= "" val))
-        (swap! data (fn [d] (assoc-in d [key :error] "TBD? We at least need the city.")))))))
-
-(defn validate-components [keys data]
+(defn validate-components [fields data]
   (doall
-   (map (fn [{:keys [key validator]}]
-          (swap! data update-in [key] dissoc :error)
-          (swap! data update-in [key] dissoc :valid)
-          (case validator
-            :has-option (has-option key data)
-            :not-blank (not-blank key data)
-            :email (email-validator key data)
-            identity)
-          (when-not (get-in @data [key :error])
-            (swap! data update-in [key] assoc :valid true)))
-        keys)))
+   (->> fields
+        flatten
+        (map (fn [{:keys [key validators validators]}]
+               (swap! data update-in [key] dissoc :error)
+               (swap! data update-in [key] dissoc :valid)
+               (doall  (->> validators
+                            (map (fn [validator]
+                                   (case validator
+                                     :has-option (has-option key data)
+                                     :not-blank (not-blank key data)
+                                     :email (email-validator key data)
+                                     (if (= js/Function  (type validator))
+                                       (validator key data)
+                                       identity))))))
+               (when-not (get-in @data [key :error])
+                 (swap! data update-in [key] assoc :valid true)))))))
 
 (defn inputs-to-key-val [inputs]
   (reduce (fn [out in-key]
-            (assoc out in-key (:value (get inputs in-key)))
-            ) {}  (keys inputs)))
+            (assoc out in-key (:value (get inputs in-key)))) {}  (keys inputs)))
 
 (defn changed-inputs-to-key-val [inputs]
   (reduce (fn [out in-key]
             (if (:changed (get inputs in-key))
               (assoc out in-key (:value (get inputs in-key)))
-              out)
-            ) {}  (keys inputs)))
+              out)) {}  (keys inputs)))
 
 (defn init-state [state from fields]
   (let [_state (reduce (fn [memo item]
@@ -236,24 +189,40 @@
     (reset! _atom re-init)))
 
 
+(defn wrap-submit [_fields _atom submit ]
+  (validate-components _fields _atom)
+  (when (zero? (count (filter identity (map :error (vals @_atom)))))
+    (swap! _atom #(assoc % :submitting true))
+    (let [params (inputs-to-key-val @_atom)]
+      (submit params (fn []
+                       (swap! _atom #(assoc % :submitting false))) ))))
+
 
 (defn form [state fields {:keys [header submit-label callback action-class]  :as params}]
   (let [cb-fn (fn [e]
-                (validate-components fields state)
-                (when (= 0 (count (filter identity (map :error (vals @state)))))
-                  (callback (inputs-to-key-val @state) ))
+                (wrap-submit fields state callback)
                 (.preventDefault e))]
     [:div
+     (str @state )
      (when header
-       [:h4 header])
+       [:div.row
+        [:div.col.s12
+         [:h4 header]]])
      (when-let [error (:error @state)]
        [:div.form-error.red-text
         error])
      [:form {:on-submit cb-fn}
-      (map (fn [field]
-             ^{:key field} [input field state])
-           fields)
-      [:div {:className (or action-class "")}
-
-       [:span.btn {:className (when (:disabled @state) " disabled ")
-                   :on-click cb-fn} (or submit-label "submit")]]]]))
+      [:div.row
+       (map-indexed (fn [idx field]
+              (if (= cljs.core/PersistentVector  (type  field))
+                ^{:key (str idx )} [:div.row
+                     (->> field
+                          (map (fn [field]
+                                 ^{:key field} [input field state])))]
+                ^{:key field} [input field state]))
+            fields)]
+      [:div.row {:className (or action-class "")}
+       [:div.col.s12
+        [:span {:className (str "btn " (when (or (:submitting @state)
+                                                 (:disabled @state)) " disabled "))
+                :on-click cb-fn} (or submit-label "submit")]]]]]))

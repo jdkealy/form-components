@@ -22,16 +22,19 @@
       :form-group-class "col s10 m6"
 
       :id "start_date"
-     :type :date :key :start_date :error false }
+     :type :date
+     :key :start_date }
     {:label "End Date"
      :icon "fa fa-calendar"
      :form-group-class "col s10 m6"
      :id "end_date"
-     :type :date :key :end_date :error false }]
+     :type :date
+     :key :end_date }]
    [{:label "Other Field"
      :form-group-class "col s10 m6"
      :id "wildcard"
-     :type :text :key :_all :error false }]])
+     :type :text
+     :key :_all }]])
 
 (defn search-form
   []

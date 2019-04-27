@@ -1,8 +1,6 @@
 (ns form-components.selector
   (:require
-   [reagent.core :as reagent :refer [atom]]
-   [taoensso.timbre :as timbre
-    :refer-macros (debug)]))
+   [reagent.core :as reagent :refer [atom]]))
 
 (defn cmp [{:keys [key on-change placeholder disabled] :as obj} data ]
   (let [current (get-in @data [key :value])
